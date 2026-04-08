@@ -9,6 +9,7 @@ import { useDominantColor } from '../hooks/useDominantColor';
 
 export default function WallCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -32,6 +33,7 @@ export default function WallCalendar() {
     addNote, 
     deleteNote, 
     updateNote,
+    moveNote,
     getNotesForDay,
     getNotesForRange 
   } = useNotes();
@@ -140,6 +142,8 @@ export default function WallCalendar() {
                         handleDayClick={handleDayClick}
                         getNotesForDay={getNotesForDay}
                         addNote={addNote}
+                        moveNote={moveNote}
+                        searchQuery={searchQuery}
                      />
                 </div>
             </div>
@@ -155,6 +159,8 @@ export default function WallCalendar() {
          addNote={addNote}
          updateNote={updateNote}
          deleteNote={deleteNote}
+         searchQuery={searchQuery}
+         setSearchQuery={setSearchQuery}
       />
     </div>
   );

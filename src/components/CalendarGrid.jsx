@@ -18,7 +18,9 @@ export default function CalendarGrid({
     handleMouseEnter,
     handleDayClick,
     getNotesForDay,
-    addNote
+    addNote,
+    moveNote,
+    searchQuery
 }) {
     const today = new Date();
     const currentMonth = currentDate.getMonth();
@@ -109,6 +111,7 @@ export default function CalendarGrid({
                             return (
                                 <DateCell 
                                     key={dIdx}
+                                    dateStr={dateStr}
                                     date={day.date}
                                     dayOfMonth={day.date.getDate()}
                                     dIdx={dIdx}
@@ -122,17 +125,24 @@ export default function CalendarGrid({
                                     accentColor={accentColor}
                                     tooltipStr={getTooltipStr(day.date, hoveredDate)}
                                     daysSpanBadge={daysSpanBadge}
-                                    onMouseDown={(e) => { e.preventDefault(); handleMouseDown(day.date); setActivePopoverDateStr(null); }}
+                                    onMouseDown={(e) => { 
+                                        if (e.target.closest('[draggable="true"]') || e.target.closest('[draggable]')) return;
+                                        e.preventDefault(); 
+                                        handleMouseDown(day.date); 
+                                        setActivePopoverDateStr(null); 
+                                    }}
                                     onMouseEnter={() => handleMouseEnter(day.date)}
                                     onClick={handleClick}
+                                    searchQuery={searchQuery}
                                     isPopoverOpen={activePopoverDateStr === dateStr}
+                                    moveNote={moveNote}
                                     renderPopover={() => (
                                         <NotePopover 
                                             dateStr={dateStr}
                                             dayNotes={getNotesForDay(dateStr)}
                                             onClose={() => setActivePopoverDateStr(null)}
-                                            onSave={(title, desc) => {
-                                                addNote(dateStr, dateStr, title, desc);
+                                            onSave={(title, desc, startTime, endTime, isAllDay) => {
+                                                addNote(dateStr, dateStr, title, desc, startTime, endTime, isAllDay);
                                                 confetti({
                                                     particleCount: 100,
                                                     spread: 70,

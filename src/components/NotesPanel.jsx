@@ -10,13 +10,22 @@ export default function NotesPanel({
     notes, 
     addNote,
     updateNote, 
-    deleteNote 
+    deleteNote,
+    searchQuery,
+    setSearchQuery
 }) {
     const [editNoteId, setEditNoteId] = useState(null);
     const [editTitle, setEditTitle] = useState('');
     const [editDesc, setEditDesc] = useState('');
+    const [editStartTime, setEditStartTime] = useState('');
+    const [editEndTime, setEditEndTime] = useState('');
+    const [editIsAllDay, setEditIsAllDay] = useState(false);
     const [showAllNotes, setShowAllNotes] = useState(false);
+    
+    const [isAllDay, setIsAllDay] = useState(false);
     const titleRef = useRef(null);
+    const startTimeRef = useRef(null);
+    const endTimeRef = useRef(null);
     const textareaRef = useRef(null);
     const activeEnd = endDate || startDate;
 
@@ -29,13 +38,15 @@ export default function NotesPanel({
     const handleSaveNote = () => {
         const titleVal = titleRef.current?.value || '';
         const descVal = textareaRef.current?.value || '';
+        const startVal = startTimeRef.current?.value || '';
+        const endVal = endTimeRef.current?.value || '';
         if (!descVal.trim() && !titleVal.trim()) return;
         if (!startDate) return;
 
         const startStr = formatDateStr(new Date(Math.min(startDate.getTime(), activeEnd.getTime())));
         const endStr = formatDateStr(new Date(Math.max(startDate.getTime(), activeEnd.getTime())));
         
-        addNote(startStr, endStr, titleVal.trim() || 'Event', descVal.trim());
+        addNote(startStr, endStr, titleVal.trim() || 'Event', descVal.trim(), startVal, endVal, isAllDay);
         confetti({
             particleCount: 100,
             spread: 70,
@@ -43,16 +54,30 @@ export default function NotesPanel({
             colors: [accentColor || '#10b981', '#ffffff', '#e2e8f0']
         });
         if (titleRef.current) titleRef.current.value = '';
+        if (startTimeRef.current) startTimeRef.current.value = '';
+        if (endTimeRef.current) endTimeRef.current.value = '';
         if (textareaRef.current) textareaRef.current.value = '';
+        setIsAllDay(false);
     };
 
     const startStr = startDate ? formatDateStr(new Date(Math.min(startDate.getTime(), activeEnd.getTime()))) : null;
     const endStr = activeEnd ? formatDateStr(new Date(Math.max(startDate.getTime(), activeEnd.getTime()))) : null;
 
     const visibleNotes = notes.filter(n => {
-        if (showAllNotes) return true;
-        if (!startStr || !endStr) return true; // If no range selected, show all by default
-        return !(n.end < startStr || n.start > endStr); // overlap logic
+        let matchDate = false;
+        
+        if (showAllNotes || searchQuery) {
+            matchDate = true;
+        } else if (startStr && endStr) {
+            matchDate = !(n.end < startStr || n.start > endStr);
+        }
+        
+        let matchSearch = true;
+        if (searchQuery) {
+            const sq = searchQuery.toLowerCase();
+            matchSearch = n.title.toLowerCase().includes(sq) || (n.description && n.description.toLowerCase().includes(sq));
+        }
+        return matchDate && matchSearch;
     });
 
     return (
@@ -80,13 +105,38 @@ export default function NotesPanel({
                      {formatDisplay(startDate)} {startDate.getTime() !== activeEnd.getTime() ? ` to ${formatDisplay(activeEnd)}` : ''}
                  </div>
                  
-                 <input 
-                     ref={titleRef}
-                     type="text"
-                     className="w-full text-sm font-bold p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2"
-                     placeholder="Event Title..."
-                     style={{ focusRingColor: accentColor }}
-                 />
+                 <div className="flex flex-col gap-2">
+                     <input 
+                         ref={titleRef}
+                         type="text"
+                         className="w-full text-sm font-bold p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2"
+                         placeholder="Event Title..."
+                         style={{ focusRingColor: accentColor }}
+                     />
+                     <div className="flex items-center gap-2 mb-1">
+                         <label className="text-xs font-semibold flex items-center gap-1 cursor-pointer select-none">
+                             <input type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} className="rounded" style={{ accentColor }} />
+                             All Day Event
+                         </label>
+                     </div>
+                     {!isAllDay && (
+                         <div className="flex gap-2">
+                             <input 
+                                 ref={startTimeRef}
+                                 type="time"
+                                 className="flex-grow text-sm p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2"
+                                 style={{ focusRingColor: accentColor }}
+                             />
+                             <span className="self-center text-slate-400 font-bold">-</span>
+                             <input 
+                                 ref={endTimeRef}
+                                 type="time"
+                                 className="flex-grow text-sm p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2"
+                                 style={{ focusRingColor: accentColor }}
+                             />
+                         </div>
+                     )}
+                 </div>
 
                  <textarea 
                      ref={textareaRef}
@@ -112,6 +162,18 @@ export default function NotesPanel({
 
          {/* Box 2: Saved Notes List */}
          <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl shadow-lg border border-white/20 dark:border-slate-700/30 backdrop-blur-sm p-6 flex flex-col max-h-[600px]">
+             
+             <div className="mb-4">
+                 <input 
+                     type="text" 
+                     placeholder="Search notes & holidays..." 
+                     value={searchQuery || ''}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                     className="w-full text-xs p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1"
+                     style={{ focusRingColor: accentColor }}
+                 />
+             </div>
+
              <div className="flex justify-between items-center mb-4">
                  <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Saved Notes ({visibleNotes.length})</h3>
                  <button 
@@ -131,20 +193,45 @@ export default function NotesPanel({
                                  <span className="text-[10px] font-mono text-slate-400">{note.start} {note.start !== note.end ? ` - ${note.end}` : ''}</span>
                                  <div className="flex gap-2">
                                      <button className="text-green-500 hover:text-green-600 transition" onClick={() => {
-                                         updateNote(note.id, editTitle, editDesc);
+                                         updateNote(note.id, editTitle, editDesc, editStartTime, editEndTime, editIsAllDay);
                                          setEditNoteId(null);
                                      }}><Check size={14}/></button>
                                      <button className="text-slate-400 hover:text-slate-600 transition" onClick={() => setEditNoteId(null)}><X size={14}/></button>
                                  </div>
                              </div>
-                             <input 
-                                 type="text" 
-                                 className="w-full text-sm font-bold p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded focus:outline-none focus:ring-1"
-                                 style={{ focusRingColor: accentColor }}
-                                 value={editTitle}
-                                 onChange={(e) => setEditTitle(e.target.value)}
-                                 placeholder="Event Title..."
-                             />
+                             <div className="flex flex-col gap-2">
+                                 <input 
+                                     type="text" 
+                                     className="w-full text-sm font-bold p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded focus:outline-none focus:ring-1"
+                                     style={{ focusRingColor: accentColor }}
+                                     value={editTitle}
+                                     onChange={(e) => setEditTitle(e.target.value)}
+                                     placeholder="Event Title..."
+                                 />
+                                 <label className="text-[10px] font-semibold flex items-center gap-1 cursor-pointer select-none">
+                                     <input type="checkbox" checked={editIsAllDay} onChange={(e) => setEditIsAllDay(e.target.checked)} className="rounded" style={{ accentColor }} />
+                                     All Day
+                                 </label>
+                                 {!editIsAllDay && (
+                                     <div className="flex gap-2">
+                                         <input 
+                                             type="time" 
+                                             className="flex-grow text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded focus:outline-none focus:ring-1"
+                                             style={{ focusRingColor: accentColor }}
+                                             value={editStartTime}
+                                             onChange={(e) => setEditStartTime(e.target.value)}
+                                         />
+                                         <span className="self-center">-</span>
+                                         <input 
+                                             type="time" 
+                                             className="flex-grow text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded focus:outline-none focus:ring-1"
+                                             style={{ focusRingColor: accentColor }}
+                                             value={editEndTime}
+                                             onChange={(e) => setEditEndTime(e.target.value)}
+                                         />
+                                     </div>
+                                 )}
+                             </div>
                              <textarea 
                                  className="w-full text-xs p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded resize-none h-16 focus:outline-none focus:ring-1"
                                  style={{ focusRingColor: accentColor }}
@@ -163,6 +250,9 @@ export default function NotesPanel({
                                         onClick={() => {
                                             setEditTitle(note.title);
                                             setEditDesc(note.description);
+                                            setEditStartTime(note.startTime || '');
+                                            setEditEndTime(note.endTime || '');
+                                            setEditIsAllDay(note.isAllDay || false);
                                             setEditNoteId(note.id);
                                         }}
                                      >
@@ -176,7 +266,16 @@ export default function NotesPanel({
                                      </button>
                                  </div>
                              </div>
-                             <h4 className="font-bold text-sm mb-1">{note.title}</h4>
+                             <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                 {note.isAllDay ? (
+                                    <span className="bg-slate-100 dark:bg-slate-700 text-[10px] py-0.5 px-1.5 rounded font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">All Day</span>
+                                 ) : note.startTime ? (
+                                     <span className="bg-slate-100 dark:bg-slate-700 text-[10px] py-0.5 px-1.5 rounded font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                                        {note.startTime} {note.endTime ? `- ${note.endTime}` : ''}
+                                     </span>
+                                 ) : null}
+                                 <h4 className="font-bold text-sm leading-tight">{note.title}</h4>
+                             </div>
                              {note.description && <p className="text-xs whitespace-pre-wrap text-slate-600 dark:text-slate-300">{note.description}</p>}
                          </>
                      )}

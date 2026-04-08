@@ -18,12 +18,26 @@ export default function DateCell({
     onMouseEnter,
     onClick,
     isPopoverOpen,
-    renderPopover
+    renderPopover,
+    searchQuery,
+    dateStr,
+    moveNote
 }) {
     const isHovered = !!tooltipStr || !!daysSpanBadge; // proxy for hover context
     const isWeekend = dIdx >= 5;
 
+    const hasSearchMatch = searchQuery 
+        ? dayNotes.some(n => 
+            n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            (n.description && n.description.toLowerCase().includes(searchQuery.toLowerCase()))
+          ) || (holidayName && holidayName.toLowerCase().includes(searchQuery.toLowerCase()))
+        : true;
+
     let baseClasses = "relative h-12 md:h-16 border rounded-lg transition-all duration-200 cursor-pointer flex flex-col pt-1 pb-1 px-2 select-none ";
+    
+    if (searchQuery && !hasSearchMatch) {
+        baseClasses += "opacity-30 hover:opacity-50 grayscale ";
+    }
     
     if (isCurrentMonth) {
         baseClasses += "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50 text-slate-800 dark:text-slate-200 hover:z-10 ";
@@ -51,6 +65,15 @@ export default function DateCell({
             onMouseDown={onMouseDown}
             onMouseEnter={onMouseEnter}
             onClick={onClick}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+                e.preventDefault();
+                const noteId = e.dataTransfer.getData('noteId');
+                if (noteId && moveNote && dateStr) {
+                    moveNote(noteId, dateStr);
+                    e.stopPropagation();
+                }
+            }}
         >
             {inRange && !isStart && !isEnd && (
                 <div className="absolute inset-y-1 -inset-x-1 sm:-inset-x-2 rounded-md pointer-events-none" style={{ backgroundColor: accentColor, opacity: 0.15 }}></div>
@@ -76,7 +99,14 @@ export default function DateCell({
                     )}
                     
                     {dayNotes.length > 0 && (
-                        <div className="w-1.5 h-1.5 rounded-full absolute top-1 right-3" style={{ backgroundColor: isStart||isEnd ? 'white' : accentColor }} title="Has Notes"></div>
+                        <div className="absolute top-1 flex gap-0.5 md:gap-1" style={{ right: holidayName ? '0.75rem' : '0.25rem' }}>
+                            {dayNotes.slice(0, 3).map((note, idx) => (
+                                <div key={idx} className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full" style={{ backgroundColor: isStart||isEnd ? 'white' : accentColor }} title={note.title}></div>
+                            ))}
+                            {dayNotes.length > 3 && (
+                                <div className="text-[8px] leading-none" style={{ color: isStart||isEnd ? 'white' : accentColor, marginTop: '-2px' }}>+</div>
+                            )}
+                        </div>
                     )}
                 </div>
                 
@@ -87,11 +117,18 @@ export default function DateCell({
                 )}
 
                 {dayNotes.length > 0 && (
-                    <div className="text-[8px] md:text-[9px] leading-tight font-semibold truncate absolute left-1.5 right-1.5 pointer-events-none hidden md:block z-20 opacity-80" 
+                    <div 
+                         draggable
+                         onDragStart={(e) => {
+                             e.stopPropagation();
+                             e.dataTransfer.setData('noteId', dayNotes[0].id);
+                         }}
+                         className="text-[8px] md:text-[9px] leading-tight font-semibold truncate absolute left-1.5 right-1.5 z-20 opacity-80 cursor-grab active:cursor-grabbing hover:opacity-100 transition-opacity" 
                          style={{ 
                              bottom: holidayName ? '14px' : '4px',
                              color: (isStart || isEnd) ? 'white' : accentColor
-                         }}>
+                         }}
+                    >
                         {dayNotes[0].title}
                     </div>
                 )}
