@@ -39,14 +39,14 @@ export default function HeroImage({ currentDate, uploadedImage, setUploadedImage
             </label>
 
             {/* Blue chevron / mountain-peak shape at the bottom */}
-            <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none" style={{ height: '64px' }}>
+            <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none" style={{ height: 'clamp(24px, 6vh, 48px)' }}>
                 <svg viewBox="0 0 100 20" preserveAspectRatio="none" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                     {/* left solid triangle */}
-                    <polygon points="0,20 0,8 30,20" fill={accent} opacity="1" />
+                    <polygon points="0,20 0,10 30,20" fill={accent} opacity="1" />
                     {/* main chevron peak */}
                     <polygon points="0,20 50,0 100,20" fill={accent} opacity="1" />
                     {/* full bottom bar */}
-                    <rect x="0" y="15" width="100" height="5" fill={accent} />
+                    <rect x="0" y="16" width="100" height="4" fill={accent} />
                 </svg>
             </div>
 

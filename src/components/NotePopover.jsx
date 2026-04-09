@@ -9,7 +9,8 @@ export default function NotePopover({
     onSave,
     onDelete,
     onUpdate,
-    accentColor 
+    accentColor,
+    dIdx // column index 0-6
 }) {
     const titleRef = useRef(null);
     const startTimeRef = useRef(null);
@@ -46,7 +47,14 @@ export default function NotePopover({
             onClick={(e) => { e.stopPropagation(); onClose(); }}
         />
         <div 
-            className="fixed md:absolute inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-[110%] w-auto md:w-72 max-w-sm mx-auto md:mx-0 bg-white dark:bg-slate-700 shadow-2xl rounded-xl p-4 z-50 border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 origin-bottom"
+            className={`fixed md:absolute inset-x-4 top-1/2 -translate-y-1/2 md:inset-x-auto md:top-1/2 w-auto md:w-72 max-w-sm mx-auto md:mx-0 bg-white dark:bg-slate-700 shadow-2xl rounded-xl p-4 z-50 border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 max-h-[90vh] md:max-h-[450px] overflow-y-auto custom-scrollbar
+                ${dIdx >= 5 
+                    ? 'md:right-0 md:left-auto md:translate-x-0 md:-translate-y-[100%] md:origin-bottom-right' 
+                    : dIdx <= 1
+                    ? 'md:left-0 md:right-auto md:translate-x-0 md:-translate-y-[100%] md:origin-bottom-left'
+                    : 'md:left-1/2 md:right-auto md:-translate-x-1/2 md:-translate-y-[100%] md:origin-bottom'
+                }
+            `}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
         >

@@ -205,6 +205,7 @@ export default function CalendarGrid({
                                             return (
                                                 <NotePopover 
                                                     dateStr={dateStr}
+                                                    dIdx={dIdx}
                                                     rangeLabel={getRangeLabel()}
                                                     dayNotes={rangeNotes}
                                                     accentColor={accentColor}
@@ -228,6 +229,7 @@ export default function CalendarGrid({
                                         return (
                                             <NotePopover 
                                                 dateStr={dateStr}
+                                                dIdx={dIdx}
                                                 dayNotes={getNotesForDay(dateStr)}
                                                 accentColor={accentColor}
                                                 onClose={() => setActivePopoverDateStr(null)}
