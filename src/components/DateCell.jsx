@@ -16,6 +16,7 @@ export default function DateCell({
     daysSpanBadge,
     onMouseDown,
     onMouseEnter,
+    onMouseUp,
     onClick,
     isPopoverOpen,
     renderPopover,
@@ -38,6 +39,9 @@ export default function DateCell({
     if (searchQuery && !hasSearchMatch) {
         baseClasses += "opacity-30 hover:opacity-50 grayscale ";
     }
+    if (searchQuery && hasSearchMatch && isCurrentMonth) {
+        baseClasses += "ring-2 shadow-md z-10 ";
+    }
     
     if (isCurrentMonth) {
         baseClasses += "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700/50 text-slate-800 dark:text-slate-200 hover:z-10 ";
@@ -46,13 +50,16 @@ export default function DateCell({
     }
     
     let dynamicStyle = {};
+    if (searchQuery && hasSearchMatch && isCurrentMonth) {
+        dynamicStyle['--tw-ring-color'] = accentColor;
+    }
     if (inRange && (!isStart && !isEnd)) {
         baseClasses += "scale-x-105 rounded-none z-0 border-transparent ";
-        dynamicStyle = { backgroundColor: accentColor, opacity: 0.15 }; 
+        dynamicStyle = { ...dynamicStyle, backgroundColor: accentColor, opacity: 0.15 }; 
     }
     if (isStart || isEnd) {
         baseClasses += "z-10 shadow-md font-bold scale-105 text-white ";
-        dynamicStyle = { backgroundColor: accentColor, borderColor: accentColor };
+        dynamicStyle = { ...dynamicStyle, backgroundColor: accentColor, borderColor: accentColor };
     }
 
     if (isHovered && !inRange) {
@@ -64,6 +71,7 @@ export default function DateCell({
             className="relative"
             onMouseDown={onMouseDown}
             onMouseEnter={onMouseEnter}
+            onMouseUp={onMouseUp}
             onClick={onClick}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
@@ -111,7 +119,7 @@ export default function DateCell({
                 </div>
                 
                 {holidayName && (
-                    <div className="text-[8px] md:text-[9px] leading-tight text-red-500 font-semibold truncate absolute bottom-1 left-1.5 right-1.5 pointer-events-none hidden md:block z-20">
+                    <div className="text-[8px] md:text-[9px] leading-tight text-red-500 font-semibold truncate absolute bottom-1 left-1.5 right-1.5 pointer-events-none z-20">
                         {holidayName}
                     </div>
                 )}

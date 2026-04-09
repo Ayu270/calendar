@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import DateCell from './DateCell';
 import NotePopover from './NotePopover';
-import { getDaysInMonth, getFirstDayOfMonth, getISOWeekNumber, isSameDay, isInRange, formatDateStr } from '../utils/dateHelpers';
+import { getDaysInMonth, getFirstDayOfMonth, getISOWeekNumber, isSameDay, isInRange, formatDateStr, formatDisplay } from '../utils/dateHelpers';
 import { HOLIDAYS } from '../utils/holidays';
 import confetti from 'canvas-confetti';
 
@@ -19,13 +19,20 @@ export default function CalendarGrid({
     handleDayClick,
     getNotesForDay,
     addNote,
+    deleteNote,
+    updateNote,
     moveNote,
-    searchQuery
+    searchQuery,
+    onRangePopoverOpen,
+    onRangePopoverClose
 }) {
     const today = new Date();
     const currentMonth = currentDate.getMonth();
     const currentYear = currentDate.getFullYear();
     const [activePopoverDateStr, setActivePopoverDateStr] = useState(null);
+    const [rangePopoverDateStr, setRangePopoverDateStr] = useState(null);
+    const mouseDownDateRef = useRef(null);
+    const prevPopoverRef = useRef(null);
 
     const days = useMemo(() => {
         const daysInMonthCount = getDaysInMonth(currentYear, currentMonth).length;
@@ -69,6 +76,35 @@ export default function CalendarGrid({
         return "Today";
     };
 
+    // Gather notes for the whole range when showing range popover
+    const getRangeNotes = () => {
+        if (!startDate || !endDate) return [];
+        const s = new Date(Math.min(startDate.getTime(), endDate.getTime()));
+        const e = new Date(Math.max(startDate.getTime(), endDate.getTime()));
+        const allNotes = [];
+        const seen = new Set();
+        let cur = new Date(s);
+        while (cur <= e) {
+            const ds = formatDateStr(cur);
+            const dayN = getNotesForDay(ds);
+            dayN.forEach(n => {
+                if (!seen.has(n.id)) { seen.add(n.id); allNotes.push(n); }
+            });
+            cur.setDate(cur.getDate() + 1);
+        }
+        return allNotes;
+    };
+
+    const getRangeLabel = () => {
+        if (!startDate) return '';
+        const activeEnd = endDate || startDate;
+        const s = new Date(Math.min(startDate.getTime(), activeEnd.getTime()));
+        const e = new Date(Math.max(startDate.getTime(), activeEnd.getTime()));
+        if (s.getTime() === e.getTime()) return formatDisplay(s);
+        const diff = Math.ceil((e - s) / (1000*60*60*24)) + 1;
+        return `${formatDisplay(s)} – ${formatDisplay(e)} (${diff} days)`;
+    };
+
     return (
         <div className="grid grid-cols-[30px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] md:grid-cols-[40px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-y-1 md:gap-y-2 gap-x-0.5 md:gap-x-1" onMouseLeave={() => setHoveredDate(null)}>
             {/* Grid Header */}
@@ -103,10 +139,11 @@ export default function CalendarGrid({
 
                             const handleClick = (e) => {
                                 handleDayClick(day.date);
-                                if (!startDate && !endDate) {
-                                    setActivePopoverDateStr(activePopoverDateStr === dateStr ? null : dateStr);
-                                }
                             };
+
+                            // Determine which popover to show
+                            const showSinglePopover = activePopoverDateStr === dateStr;
+                            const showRangePopover = rangePopoverDateStr === dateStr && endDate;
 
                             return (
                                 <DateCell 
@@ -127,32 +164,88 @@ export default function CalendarGrid({
                                     daysSpanBadge={daysSpanBadge}
                                     onMouseDown={(e) => { 
                                         if (e.target.closest('[draggable="true"]') || e.target.closest('[draggable]')) return;
-                                        e.preventDefault(); 
-                                        handleMouseDown(day.date); 
-                                        setActivePopoverDateStr(null); 
+                                        e.preventDefault();
+                                        // Remember if a popover was open on this cell before clearing
+                                        prevPopoverRef.current = activePopoverDateStr || rangePopoverDateStr;
+                                        setActivePopoverDateStr(null);
+                                        setRangePopoverDateStr(null);
+                                        handleMouseDown(day.date);
+                                        mouseDownDateRef.current = dateStr;
+                                    }}
+                                    onMouseUp={() => {
+                                        const downDateStr = mouseDownDateRef.current;
+                                        const wasOpen = prevPopoverRef.current;
+                                        mouseDownDateRef.current = null;
+                                        prevPopoverRef.current = null;
+                                        
+                                        if (downDateStr === dateStr) {
+                                            // Single date click — toggle: close if was already open on this cell
+                                            if (wasOpen === dateStr) return; // was open, mouseDown closed it → stay closed
+                                            setTimeout(() => {
+                                                setActivePopoverDateStr(dateStr);
+                                            }, 10);
+                                        } else if (downDateStr && downDateStr !== dateStr) {
+                                            // Range completed — show range popover on drop cell
+                                            setTimeout(() => {
+                                                setRangePopoverDateStr(dateStr);
+                                            }, 10);
+                                        }
                                     }}
                                     onMouseEnter={() => handleMouseEnter(day.date)}
                                     onClick={handleClick}
                                     searchQuery={searchQuery}
-                                    isPopoverOpen={activePopoverDateStr === dateStr}
+                                    isPopoverOpen={showSinglePopover || showRangePopover}
                                     moveNote={moveNote}
-                                    renderPopover={() => (
-                                        <NotePopover 
-                                            dateStr={dateStr}
-                                            dayNotes={getNotesForDay(dateStr)}
-                                            onClose={() => setActivePopoverDateStr(null)}
-                                            onSave={(title, desc, startTime, endTime, isAllDay) => {
-                                                addNote(dateStr, dateStr, title, desc, startTime, endTime, isAllDay);
-                                                confetti({
-                                                    particleCount: 100,
-                                                    spread: 70,
-                                                    origin: { y: 0.6 },
-                                                    colors: [accentColor || '#10b981', '#ffffff', '#e2e8f0']
-                                                });
-                                                setActivePopoverDateStr(null);
-                                            }}
-                                        />
-                                    )}
+                                    renderPopover={() => {
+                                        if (showRangePopover) {
+                                            // Range popover — shows notes across the entire range
+                                            const rangeNotes = getRangeNotes();
+                                            const rangeStartStr = formatDateStr(new Date(Math.min(startDate.getTime(), endDate.getTime())));
+                                            const rangeEndStr = formatDateStr(new Date(Math.max(startDate.getTime(), endDate.getTime())));
+                                            return (
+                                                <NotePopover 
+                                                    dateStr={dateStr}
+                                                    rangeLabel={getRangeLabel()}
+                                                    dayNotes={rangeNotes}
+                                                    accentColor={accentColor}
+                                                    onClose={() => { setRangePopoverDateStr(null); if (onRangePopoverClose) onRangePopoverClose(); }}
+                                                    onDelete={deleteNote}
+                                                    onUpdate={updateNote}
+                                                    onSave={(title, desc, startTime, endTime, isAllDay) => {
+                                                        addNote(rangeStartStr, rangeEndStr, title, desc, startTime, endTime, isAllDay);
+                                                        confetti({
+                                                            particleCount: 100,
+                                                            spread: 70,
+                                                            origin: { y: 0.6 },
+                                                            colors: [accentColor || '#10b981', '#ffffff', '#e2e8f0']
+                                                        });
+                                                        setRangePopoverDateStr(null);
+                                                    }}
+                                                />
+                                            );
+                                        }
+                                        // Single-date popover
+                                        return (
+                                            <NotePopover 
+                                                dateStr={dateStr}
+                                                dayNotes={getNotesForDay(dateStr)}
+                                                accentColor={accentColor}
+                                                onClose={() => setActivePopoverDateStr(null)}
+                                                onDelete={deleteNote}
+                                                onUpdate={updateNote}
+                                                onSave={(title, desc, startTime, endTime, isAllDay) => {
+                                                    addNote(dateStr, dateStr, title, desc, startTime, endTime, isAllDay);
+                                                    confetti({
+                                                        particleCount: 100,
+                                                        spread: 70,
+                                                        origin: { y: 0.6 },
+                                                        colors: [accentColor || '#10b981', '#ffffff', '#e2e8f0']
+                                                    });
+                                                    setActivePopoverDateStr(null);
+                                                }}
+                                            />
+                                        );
+                                    }}
                                 />
                             );
                         })}
