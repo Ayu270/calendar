@@ -2,7 +2,9 @@
 
 A high-fidelity, interactive 3D calendar application built with React and Vite. This project transforms the traditional calendar experience into a physical "wall calendar" digital twin, featuring smooth vertical 3D page-flip transitions, dynamic layout adjustments, and rich event management.
 
-![Calendar Preview](public/preview-screenshot.png) *(Placeholder: Add your screenshot here)*
+![Calendar Preview](public/preview-screenshot.png)
+
+Live - https://calendar-ttask.vercel.app/
 
 ## ✨ Key Features
 
